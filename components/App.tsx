@@ -1,8 +1,15 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { OrbitControls, Edges } from "@react-three/drei"
+import { OrbitControls, Edges, PerspectiveCamera, useHelper } from "@react-three/drei"
 import { createContext, useContext, useEffect, useRef, useState } from "react"
-import { Mesh } from "three"
+import {
+  CameraHelper,
+  DirectionalLight,
+  DirectionalLightHelper,
+  Mesh,
+  PerspectiveCamera as PerspectiveCameraImpl,
+} from "three"
 import gsap from "gsap"
+import useShadowHelper from "./hooks/useShadowHelper"
 
 const context = createContext<{ control: any }>({
   control: null,
@@ -50,7 +57,7 @@ const Box = () => {
 
 const Sphere = () => {
   return (
-    <mesh position={[-5, 0, 0]} castShadow>
+    <mesh position={[-2, 0, 0]} castShadow>
       <meshNormalMaterial wireframe></meshNormalMaterial>
       <sphereGeometry args={[3, 100, 100]}></sphereGeometry>
       <Edges color="gray" scale={1.1} threshold={15} />
@@ -67,22 +74,54 @@ const Floor = () => {
   )
 }
 
-const App = () => {
+const Root = () => {
+  const scene = useThree((state) => state.scene)
   const controlRef = useRef<any>()
+  const cameraRef = useRef<PerspectiveCameraImpl>()
+  const lightRef = useRef<DirectionalLight>(null)
+  // useHelper(cameraRef, CameraHelper)
+  useShadowHelper(lightRef)
+  useEffect(() => {
+    console.log(lightRef)
+    lightRef.current!.shadow.camera.left = -10
+  }, [])
+  return (
+    <context.Provider value={{ control: controlRef }}>
+      <PerspectiveCamera ref={cameraRef}></PerspectiveCamera>
+      <OrbitControls ref={controlRef} camera={cameraRef.current} />
+      <ambientLight />
+      <directionalLight
+        ref={lightRef}
+        castShadow
+        color="red"
+        shadow-mapSize={[1024, 1024]}
+        shadow-bias={-0.0001}
+      />
+      <gridHelper></gridHelper>
+      <axesHelper args={[4]}></axesHelper>
+      <Box />
+      <Sphere />
+      <Floor />
+    </context.Provider>
+  )
+}
+
+type WrapperProps = {
+  children?: React.ReactNode
+}
+
+const Wrapper = (props: WrapperProps) => {
   return (
     <Canvas camera={{ position: [0, 0, 10] }} gl={{ antialias: true }} shadows>
-      <context.Provider value={{ control: controlRef }}>
-        <OrbitControls ref={controlRef} />
-        <ambientLight />
-        <directionalLight castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0001} />
-        <gridHelper></gridHelper>
-        <axesHelper args={[4]}></axesHelper>
-        <Box />
-        <Sphere />
-        <Floor />
-      </context.Provider>
+      {props.children}
     </Canvas>
   )
 }
+
+const App = () => (
+  <Wrapper>
+    <Root />
+  </Wrapper>
+)
 
 export default App
