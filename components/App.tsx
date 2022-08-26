@@ -1,10 +1,19 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { OrbitControls, Edges, PerspectiveCamera, useHelper } from "@react-three/drei"
-import { createContext, useContext, useEffect, useRef, useState } from "react"
+import { OrbitControls, Edges, PerspectiveCamera, useHelper, Cone } from "@react-three/drei"
+import {
+  createContext,
+  MutableRefObject,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
 import {
   CameraHelper,
   DirectionalLight,
   DirectionalLightHelper,
+  MathUtils,
   Mesh,
   PerspectiveCamera as PerspectiveCameraImpl,
 } from "three"
@@ -30,6 +39,19 @@ const Box = () => {
   })
   const state = useThree()
 
+  useLayoutEffect(() => {
+    const target = { n: 0 }
+    gsap.to(target, {
+      n: 1,
+      duration: 2,
+      repeat: -1,
+      ease: "none",
+      onUpdate() {
+        el.current!.rotation.y = MathUtils.lerp(0, Math.PI * 2, target.n)
+      },
+    })
+  }, [])
+
   return (
     <mesh
       ref={el}
@@ -41,7 +63,7 @@ const Box = () => {
           n: 1,
           duration: 1,
           onUpdate() {
-            e.camera.rotateX(target.n)
+            // e.camera.rotateX(target.n)
             ctx.control.current.target.lerp(e.object.position, target.n)
           },
         })
@@ -51,6 +73,7 @@ const Box = () => {
       <meshStandardMaterial color="#28bea0"></meshStandardMaterial>
       <boxGeometry args={[1, 1, 1]}></boxGeometry>
       <Edges color="gray" scale={1.1} threshold={15} />
+      <Cone position={[-4, 0, 0]} />
     </mesh>
   )
 }
@@ -74,6 +97,64 @@ const Floor = () => {
   )
 }
 
+const useCameraControl = (controlRef: MutableRefObject<any>) => {
+  useEffect(() => {
+    window.addEventListener("keydown", (e) => {
+      console.log(e.code)
+      switch (e.code) {
+        case "KeyW": {
+          gsap.to(controlRef.current.object.position, {
+            z: controlRef.current.object.position.z - 0.5,
+            duration: 0.6,
+            overwrite: true,
+          })
+          break
+        }
+        case "KeyS": {
+          gsap.to(controlRef.current.object.position, {
+            z: controlRef.current.object.position.z + 0.5,
+            duration: 0.6,
+            overwrite: true,
+          })
+          break
+        }
+        case "KeyA": {
+          gsap.to(controlRef.current.object.position, {
+            x: controlRef.current.object.position.x - 0.5,
+            duration: 0.6,
+            overwrite: true,
+          })
+          break
+        }
+        case "KeyD": {
+          gsap.to(controlRef.current.object.position, {
+            x: controlRef.current.object.position.x + 0.5,
+            duration: 0.6,
+            overwrite: true,
+          })
+          break
+        }
+        case "KeyQ": {
+          gsap.to(controlRef.current.object.position, {
+            y: controlRef.current.object.position.y + 0.5,
+            duration: 0.6,
+            overwrite: true,
+          })
+          break
+        }
+        case "KeyE": {
+          gsap.to(controlRef.current.object.position, {
+            y: controlRef.current.object.position.y - 0.5,
+            duration: 0.6,
+            overwrite: true,
+          })
+          break
+        }
+      }
+    })
+  }, [])
+}
+
 const Root = () => {
   const scene = useThree((state) => state.scene)
   const controlRef = useRef<any>()
@@ -85,9 +166,11 @@ const Root = () => {
     console.log(lightRef)
     lightRef.current!.shadow.camera.left = -10
   }, [])
+  useCameraControl(controlRef)
+
   return (
     <context.Provider value={{ control: controlRef }}>
-      <PerspectiveCamera ref={cameraRef}></PerspectiveCamera>
+      <PerspectiveCamera ref={cameraRef} position={[100, 5, 5]}></PerspectiveCamera>
       <OrbitControls ref={controlRef} camera={cameraRef.current} />
       <ambientLight />
       <directionalLight
