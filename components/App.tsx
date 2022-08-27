@@ -24,7 +24,9 @@ import {
   TextureLoader,
 } from "three"
 import gsap from "gsap"
+import { EffectComposer, DepthOfField, Noise } from "@react-three/postprocessing"
 import useShadowHelper from "./hooks/useShadowHelper"
+import { Physics, useBox, usePlane } from "@react-three/cannon"
 
 const loader = new TextureLoader()
 
@@ -32,10 +34,19 @@ const context = createContext<{ control: any }>({
   control: null,
 })
 
+const SomeEffect = () => {
+  return (
+    <EffectComposer>
+      {/* <DepthOfField focusDistance={0} focalLength={0.02} bokehScale={2} height={480} /> */}
+      {/* <Noise/> */}
+    </EffectComposer>
+  )
+}
+
 const Box = () => {
   const [clicked, setClicked] = useState(false)
   const ctx = useContext(context)
-  const el = useRef<Mesh>(null)
+  // const el = useRef<Mesh>(null)
   useFrame((state) => {
     // state.camera.lookAt(10, 10, 10)
     // console.log("???")
@@ -47,6 +58,11 @@ const Box = () => {
   })
   const state = useThree()
 
+  const [el, api] = useBox(() => ({
+    mass: 1,
+    position: [4, 0, 0],
+  }))
+
   useLayoutEffect(() => {
     const target = { n: 0 }
     gsap.to(target, {
@@ -55,7 +71,7 @@ const Box = () => {
       repeat: -1,
       ease: "none",
       onUpdate() {
-        el.current!.rotation.y = MathUtils.lerp(0, Math.PI * 2, target.n)
+        api.rotation.set(0, MathUtils.lerp(0, Math.PI * 2, target.n), 0)
       },
     })
   }, [])
@@ -63,7 +79,6 @@ const Box = () => {
   return (
     <mesh
       ref={el}
-      position={[5, 0, 0]}
       onClick={(e) => {
         setClicked(true)
         const target = { n: 0 }
@@ -75,6 +90,7 @@ const Box = () => {
             ctx.control.current.target.lerp(e.object.position, target.n)
           },
         })
+        api.velocity.set(0, 20, 0)
       }}
       castShadow
     >
@@ -97,8 +113,12 @@ const Sphere = () => {
 }
 
 const Floor = () => {
+  const [el] = usePlane(() => ({
+    position: [0, -4, 0],
+    rotation: [-Math.PI / 2, 0, 0],
+  }))
   return (
-    <mesh position={[0, -4, 0]} rotation={[-1.55, 0, 0]} receiveShadow>
+    <mesh ref={el} receiveShadow>
       <meshPhongMaterial></meshPhongMaterial>
       <planeGeometry args={[20, 20]}></planeGeometry>
     </mesh>
@@ -201,6 +221,7 @@ const Root = () => {
 
   return (
     <context.Provider value={{ control: controlRef }}>
+      <SomeEffect />
       <PerspectiveCamera ref={cameraRef} position={[100, 5, 5]}></PerspectiveCamera>
       <OrbitControls ref={controlRef} camera={cameraRef.current} />
       <ambientLight />
@@ -228,8 +249,8 @@ type WrapperProps = {
 const Wrapper = (props: WrapperProps) => {
   return (
     <Canvas camera={{ position: [0, 0, 10] }} gl={{ antialias: true }} shadows>
-      <fog attach="fog" color="hotpink" near={1} far={50} />
-      {props.children}
+      {/* <fog attach="fog" color="hotpink" near={1} far={50} /> */}
+      <Physics>{props.children}</Physics>
     </Canvas>
   )
 }
